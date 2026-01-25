@@ -1,0 +1,11 @@
+streamlit
+langchain
+langgraph
+langchain-ollama
+chromadb
+pydantic
+requests
+termcolor
+langchain-community
+langchain-text-splitters
+

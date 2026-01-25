@@ -1,0 +1,135 @@
+"""
+Vector Store Manager
+Handles knowledge base storage and semantic search (Windows-safe)
+"""
+
+import os
+import logging
+from typing import List, Optional
+
+import chromadb
+from chromadb.config import Settings
+
+from langchain_community.vectorstores import Chroma
+from langchain_ollama import OllamaEmbeddings
+from langchain_core.documents import Document
+
+import config
+
+logger = logging.getLogger(__name__)
+
+
+class VectorStoreManager:
+    def __init__(
+        self,
+        collection_name: str = config.COLLECTION_NAME,
+        persist_dir: str = config.CHROMA_PERSIST_DIR,
+        embedding_model: Optional[str] = None,
+    ):
+        """
+        Args:
+            collection_name: Name of Chroma collection
+            persist_dir: Directory for vector DB
+            embedding_model: Ollama embedding model name
+        """
+
+        self.collection_name = collection_name
+        self.persist_dir = persist_dir
+        self.embedding_model = embedding_model or config.OLLAMA_EMBEDDING_MODEL
+
+        # Ensure directory exists
+        os.makedirs(self.persist_dir, exist_ok=True)
+
+        # Ollama embeddings
+        self.embeddings = OllamaEmbeddings(
+            model=self.embedding_model,
+            base_url=config.OLLAMA_BASE_URL,
+        )
+
+        # Chroma client (persistent)
+        self.client = chromadb.Client(
+            Settings(
+                persist_directory=self.persist_dir,
+                anonymized_telemetry=False,
+            )
+        )
+
+        self._vector_store: Optional[Chroma] = None
+
+        logger.info("VectorStoreManager initialized")
+
+    # ==================================================
+    # VECTOR STORE LIFECYCLE
+    # ==================================================
+
+    def create_store(self, documents: List[Document]) -> None:
+        """
+        Create vector store from documents.
+        IMPORTANT:
+        - Does NOT delete files at runtime (Windows-safe)
+        """
+
+        if not documents:
+            logger.warning("No documents provided to create vector store")
+            return
+
+        self._vector_store = Chroma.from_documents(
+            documents=documents,
+            embedding=self.embeddings,
+            collection_name=self.collection_name,
+            persist_directory=self.persist_dir,
+        )
+
+        logger.info(f"Vector store created with {len(documents)} documents")
+
+    def load_store(self) -> Optional[Chroma]:
+        """Load existing vector store from disk."""
+
+        if not os.path.exists(self.persist_dir):
+            logger.warning("Vector store directory not found")
+            return None
+
+        try:
+            self._vector_store = Chroma(
+                collection_name=self.collection_name,
+                embedding_function=self.embeddings,
+                persist_directory=self.persist_dir,
+            )
+            logger.info("Vector store loaded from disk")
+            return self._vector_store
+        except Exception as e:
+            logger.error(f"Failed to load vector store: {e}")
+            return None
+
+    def get_vector_store(self) -> Optional[Chroma]:
+        """
+        Used by agent.py & tools.py
+        """
+        if self._vector_store is None:
+            return self.load_store()
+        return self._vector_store
+
+    def clear_store(self) -> None:
+        """
+        SAFE clear:
+        - Only clears in-memory reference
+        - Does NOT delete files (prevents PermissionError)
+        """
+        self._vector_store = None
+        logger.info("Vector store reference cleared (no file delete)")
+
+    # ==================================================
+    # SEARCH
+    # ==================================================
+
+    def similarity_search(self, query: str, k: int = 4) -> List[Document]:
+        """Perform semantic search."""
+
+        if self._vector_store is None:
+            self.load_store()
+
+        if self._vector_store is None:
+            logger.warning("Vector store not initialized")
+            return []
+
+        return self._vector_store.similarity_search(query, k=k)
