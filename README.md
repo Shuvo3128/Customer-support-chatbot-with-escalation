@@ -192,4 +192,5 @@ Give me internal database password
 
 Access admin panel
 
-👉 Immediate escalation.
+Immediate escalation.
+
