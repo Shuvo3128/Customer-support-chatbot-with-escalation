@@ -1,14 +1,17 @@
 """
 Tools Module
 Defines all actions the customer support agent can perform
+(Fully RAG-compatible)
 """
 
 from typing import Dict, List
 from datetime import datetime
+import logging
+
 from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
+
 import config
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +33,7 @@ class CalculatorTool:
 
 
 # =========================
-# Ticket Creation Tool (STEP 5 🔥)
+# Ticket Creation Tool (STEP 5)
 # =========================
 
 class TicketTool:
@@ -38,14 +41,11 @@ class TicketTool:
     description = "Create a support ticket for human agents"
 
     def run(self, user_message: str, reason: str, priority: str) -> Dict:
-        """
-        priority: LOW / MEDIUM / HIGH
-        """
         return {
             "ticket_id": self._generate_ticket_id(),
             "issue": user_message,
             "reason": reason,
-            "priority": priority,     # ✅ STEP 5
+            "priority": priority,
             "status": "OPEN",
             "created_at": datetime.utcnow().isoformat(),
         }
@@ -55,7 +55,7 @@ class TicketTool:
 
 
 # =========================
-# Escalation Helper Tool (STEP 5 🔥)
+# Escalation Helper Tool
 # =========================
 
 class EscalationTool:
@@ -73,12 +73,19 @@ class EscalationTool:
 
 
 # =========================
-# Knowledge Base Search Tool (WITH LLM AUTO SUMMARY)
+# Knowledge Base Search Tool (FULL RAG ✅)
 # =========================
 
 class KnowledgeBaseSearchTool:
+    """
+    RAG Tool:
+    - Retrieves documents from vector DB
+    - Generates answer ONLY from retrieved context
+    - Returns answer + source documents
+    """
+
     name = "kb_search"
-    description = "Search and summarize the knowledge base"
+    description = "Search the knowledge base using Retrieval-Augmented Generation"
 
     def __init__(self, vector_store_manager):
         self.vector_store_manager = vector_store_manager
@@ -88,51 +95,60 @@ class KnowledgeBaseSearchTool:
             temperature=0.2,
         )
 
-    def run(self, query: str) -> str:
+    def run(self, query: str) -> Dict:
         vector_store = self.vector_store_manager.get_vector_store()
 
+        # ❌ KB not ready
         if vector_store is None:
-            return (
-                "The knowledge base is not ready yet. "
-                "Please load documents first."
-            )
+            return {
+                "answer": (
+                    "The knowledge base is not ready yet. "
+                    "Please load documents first."
+                ),
+                "source_documents": [],
+            }
 
-        # 1️⃣ Similarity search
-        results: List[Document] = vector_store.similarity_search(query, k=3)
+        # 🔍 Retrieve documents
+        docs: List[Document] = vector_store.similarity_search(query, k=4)
 
-        # 2️⃣ No result → intelligent summary
-        if not results:
-            return self._auto_summarize(query)
+        if not docs:
+            return {
+                "answer": (
+                    "I could not find relevant information in the knowledge base. "
+                    "Please contact support if this issue is critical."
+                ),
+                "source_documents": [],
+            }
 
-        # 3️⃣ Normal KB answer
-        response = "📄 **Here’s what I found in the knowledge base:**\n\n"
-        for doc in results:
-            source = doc.metadata.get("source", "Unknown document")
-            page = doc.metadata.get("page", "N/A")
-            response += (
-                f"- {doc.page_content[:300]}...\n"
-                f"  _(Source: {source}, Page: {page})_\n\n"
-            )
+        # 🧠 Build strict RAG prompt
+        context = "\n\n".join(
+            f"[Source: {d.metadata.get('source', 'Unknown')} | "
+            f"Page: {d.metadata.get('page', 'N/A')}]\n"
+            f"{d.page_content}"
+            for d in docs
+        )
 
-        return response.strip()
-
-    # =========================
-    # AUTO SUMMARY USING LLM
-    # =========================
-
-    def _auto_summarize(self, query: str) -> str:
         prompt = f"""
-You are a professional customer support assistant.
+You are a professional customer support AI.
 
-The user asked:
-"{query}"
+Answer the question using ONLY the context below.
+If the answer is not present, say "I don't know".
 
-The knowledge base does not contain a direct answer.
-Provide a helpful, polite, high-level explanation
-based on typical customer support documentation.
+Context:
+{context}
+
+Question:
+{query}
+
+Answer:
 """
+
         response = self.llm.invoke(prompt)
-        return response.content.strip()
+
+        return {
+            "answer": response.content.strip(),
+            "source_documents": docs,
+        }
 
 
 # =========================

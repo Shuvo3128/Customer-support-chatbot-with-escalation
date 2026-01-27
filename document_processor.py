@@ -1,12 +1,12 @@
 """
 Document Processor
-Responsible for loading, cleaning, and chunking documents
-for the customer support knowledge base.
+Responsible for loading, cleaning, chunking documents
+for the customer support knowledge base (RAG-ready).
 """
 
 import os
-from typing import List
 import logging
+from typing import List
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -15,7 +15,6 @@ from langchain_core.documents import Document
 import config
 
 logger = logging.getLogger(__name__)
-
 
 
 class DocumentProcessor:
@@ -36,16 +35,22 @@ class DocumentProcessor:
             separators=["\n\n", "\n", " ", ""],
         )
 
-    # =========================
-    # Public APIs
-    # =========================
+    # ==================================================
+    # PUBLIC APIs
+    # ==================================================
 
     def process_pdf(self, file_path: str) -> List[Document]:
-        """Load and split a PDF file."""
+        """Load, clean and split a PDF file."""
         logger.info(f"Processing PDF: {file_path}")
 
         loader = PyPDFLoader(file_path)
         documents = loader.load()
+
+        # ✅ Normalize metadata
+        for doc in documents:
+            doc.metadata["source"] = os.path.basename(file_path)
+            if "page" in doc.metadata:
+                doc.metadata["page"] = doc.metadata["page"] + 1  # human readable
 
         return self._split_documents(documents)
 
@@ -55,6 +60,10 @@ class DocumentProcessor:
 
         loader = TextLoader(file_path, encoding="utf-8")
         documents = loader.load()
+
+        for doc in documents:
+            doc.metadata["source"] = os.path.basename(file_path)
+            doc.metadata["page"] = "N/A"
 
         return self._split_documents(documents)
 
@@ -84,12 +93,20 @@ class DocumentProcessor:
         logger.info(f"Total processed chunks: {len(all_docs)}")
         return all_docs
 
-    # =========================
-    # Internal Helpers
-    # =========================
+    # ==================================================
+    # INTERNAL HELPERS
+    # ==================================================
 
     def _split_documents(self, documents: List[Document]) -> List[Document]:
-        """Split documents into clean chunks."""
+        """
+        Split documents into chunks and preserve metadata
+        """
         chunks = self.text_splitter.split_documents(documents)
+
+        # ✅ Safety check: ensure metadata exists
+        for chunk in chunks:
+            chunk.metadata.setdefault("source", "Unknown")
+            chunk.metadata.setdefault("page", "N/A")
+
         logger.info(f"Split into {len(chunks)} chunks")
         return chunks

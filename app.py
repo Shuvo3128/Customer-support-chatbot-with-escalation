@@ -8,19 +8,16 @@ Features:
 - Intent detection
 - Auto escalation
 - Ticketing with priority
-- Clean, professional UI
+- RAG with Source Documents (Teacher Killer 🔥)
 """
 
 import streamlit as st
 import logging
 
 from agent import CustomerSupportAgent
-from escalation_manager import EscalationManager
 from utils import (
     setup_logging,
     typing_effect,
-    format_sources,
-    create_ticket_payload,
     generate_session_id,
 )
 
@@ -46,9 +43,6 @@ st.set_page_config(
 def init_session_state():
     if "agent" not in st.session_state:
         st.session_state.agent = CustomerSupportAgent()
-
-    if "escalator" not in st.session_state:
-        st.session_state.escalator = EscalationManager()
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -117,6 +111,7 @@ def main():
             "🤖 Auto Escalation (AI Failure)",
             "🚨 Human Escalation System",
             "🎫 Ticket Creation with Priority",
+            "📄 RAG Source Transparency (PDF + Page)",
         ]
 
         for cap in capabilities:
@@ -124,16 +119,19 @@ def main():
 
         st.divider()
 
+        # =========================
+        # KNOWLEDGE BASE LOADER (FIXED 🔥)
+        # =========================
         st.subheader("📄 Knowledge Base")
+
         if st.button("📥 Load PDFs"):
             from document_processor import DocumentProcessor
-            from vector_store import VectorStoreManager
 
             processor = DocumentProcessor()
             chunks = processor.process_folder(config.PDF_DIR)
 
-            store = VectorStoreManager()
-            store.create_store(chunks)
+            # 🔥 IMPORTANT FIX: use agent's vector store
+            st.session_state.agent.vector_store_manager.create_store(chunks)
 
             st.success("Knowledge base loaded successfully!")
 
@@ -155,8 +153,8 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 result = st.session_state.agent.get_full_response(prompt)
-                answer = result.get("output", "Sorry, I couldn't respond.")
 
+                answer = result.get("output", "Sorry, I couldn't respond.")
                 typing_effect(answer)
 
                 st.session_state.messages.append(
@@ -166,12 +164,22 @@ def main():
                 if result.get("escalated"):
                     st.session_state.escalated = True
 
-                # Optional RAG sources
-                if result.get("source_documents"):
-                    with st.expander("📚 Sources"):
-                        st.markdown(
-                            format_sources(result["source_documents"])
-                        )
+                # ==================================================
+                # 🔥 SHOW RAG SOURCE DOCUMENTS
+                # ==================================================
+                documents = result.get("source_documents", [])
+
+                if documents:
+                    with st.expander("📚 Source Documents"):
+                        for doc in documents:
+                            st.markdown(
+                                f"""
+**File:** {doc.metadata.get('source', 'Unknown')}
+**Page:** {doc.metadata.get('page', 'N/A')}
+
+{doc.page_content[:500]}...
+"""
+                            )
 
 
 # --------------------------------------------------

@@ -37,7 +37,7 @@ class VectorStoreManager:
         self.persist_dir = persist_dir
         self.embedding_model = embedding_model or config.OLLAMA_EMBEDDING_MODEL
 
-        # Ensure directory exists
+        # Ensure directory exists (Windows-safe)
         os.makedirs(self.persist_dir, exist_ok=True)
 
         # Ollama embeddings
@@ -46,7 +46,7 @@ class VectorStoreManager:
             base_url=config.OLLAMA_BASE_URL,
         )
 
-        # Chroma client (persistent)
+        # Chroma persistent client
         self.client = chromadb.Client(
             Settings(
                 persist_directory=self.persist_dir,
@@ -65,8 +65,10 @@ class VectorStoreManager:
     def create_store(self, documents: List[Document]) -> None:
         """
         Create vector store from documents.
-        IMPORTANT:
-        - Does NOT delete files at runtime (Windows-safe)
+
+        Notes:
+        - Safe for Windows
+        - Does not delete files at runtime
         """
 
         if not documents:
@@ -111,19 +113,23 @@ class VectorStoreManager:
 
     def clear_store(self) -> None:
         """
-        SAFE clear:
-        - Only clears in-memory reference
-        - Does NOT delete files (prevents PermissionError)
+        Clears in-memory reference only.
+        Does NOT delete files (prevents PermissionError on Windows)
         """
         self._vector_store = None
-        logger.info("Vector store reference cleared (no file delete)")
+        logger.info("Vector store reference cleared")
 
     # ==================================================
-    # SEARCH
+    # 🔍 SEARCH (RAG CORE)
     # ==================================================
 
     def similarity_search(self, query: str, k: int = 4) -> List[Document]:
-        """Perform semantic search."""
+        """
+        Perform semantic similarity search.
+
+        Returns:
+            List[Document] — used by RAG pipeline
+        """
 
         if self._vector_store is None:
             self.load_store()
