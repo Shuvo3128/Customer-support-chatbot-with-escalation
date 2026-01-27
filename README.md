@@ -69,3 +69,65 @@ CUSTOMER_SUPPORT_CHATBOT/
 ├── pdfFiles/                # 📌 Place PDFs here for RAG
 │
 └── README.md
+
+📥 How to Add PDFs (IMPORTANT)
+
+Copy your PDF files into the folder:
+
+pdfFiles/
+
+Example:
+pdfFiles/
+├── refund_policy.pdf
+├── terms_and_conditions.pdf
+
+
+Run the application:
+
+streamlit run app.py
+
+
+In the UI sidebar, click:
+
+📥 Load PDFs
+
+
+The system will:
+
+Process PDFs
+
+Create embeddings
+
+Store them in ChromaDB
+
+Enable RAG-based answering
+
+💬 Example Questions to Test
+
+“What does the refund policy say?”
+
+“How long does delivery take?”
+
+“I want a refund”
+
+“I already complained multiple times”
+
+“Explain cancellation rules”
+
+🚨 Escalation Logic
+
+Escalation is triggered when:
+
+Repeated complaints or refund demands
+
+Sensitive requests (security, fraud, passwords)
+
+Multiple failed AI responses
+
+A support ticket is generated with:
+
+Issue summary
+
+Reason
+
+Priority (LOW / MEDIUM / HIGH)
