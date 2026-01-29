@@ -56,3 +56,19 @@ RAG: LangChain
 Backend: Python
 
 Storage: Local persistent DB (Chroma + JSON)
+
+📁 Project Structure
+CUSTOMER_SUPPORT_CHATBOT/
+├── app.py                 # Streamlit UI + Admin Dashboard
+├── agent.py               # Core AI agent (RAG + memory + escalation)
+├── memory_manager.py      # Short & long-term memory + identity
+├── admin_store.py         # Persistent admin ticket storage
+├── vector_store.py        # ChromaDB + user memory store
+├── document_processor.py  # PDF loading & chunking
+├── tools.py               # Ticketing & escalation tools
+├── escalation_manager.py  # Escalation rules
+├── utils.py               # UI & logging helpers
+├── config.py              # Config
+├── requirements.txt
+├── pdfFiles/              # 📌 Place PDFs here
+└── admin_escalations.json # Persistent tickets
