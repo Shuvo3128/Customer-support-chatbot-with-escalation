@@ -1,0 +1,94 @@
+[
+  {
+    "ticket_id": "TICKET-1769684299",
+    "user_id": "9cebb6b4-1d93-4871-aa0d-49335e4ec3f5",
+    "reason": "User complaint, demand, or sensitive issue detected",
+    "priority": "HIGH",
+    "status": "IN_PROGRESS",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "I want a refund",
+        "timestamp": "2026-01-29T16:58:16.648300"
+      },
+      {
+        "role": "admin",
+        "content": "fix",
+        "timestamp": "2026-01-29T18:38:29.035771"
+      },
+      {
+        "role": "admin",
+        "content": "fix",
+        "timestamp": "2026-01-29T18:44:47.615983"
+      }
+    ],
+    "created_at": "2026-01-29T16:58:19.178923",
+    "updated_at": "2026-01-29T18:44:47.616014"
+  },
+  {
+    "ticket_id": "TICKET-1769690259",
+    "user_id": "1fef587f-2e4d-40b4-8f50-a5f6d5a37d06",
+    "reason": "User complaint, demand, or sensitive issue detected",
+    "priority": "LOW",
+    "status": "OPEN",
+    "conversation": [
+      {
+        "role": "assistant",
+        "content": "Nice to meet you, Shuvo \ud83d\ude42",
+        "timestamp": "2026-01-29T18:32:48.249594"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes \ud83d\ude42 I remember your name. Your name is **Shuvo**.",
+        "timestamp": "2026-01-29T18:33:15.553172"
+      },
+      {
+        "role": "assistant",
+        "content": "Nice to meet you, Nitu \ud83d\ude42",
+        "timestamp": "2026-01-29T18:33:36.297351"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes \ud83d\ude42 I remember your name. Your name is **Nitu**.",
+        "timestamp": "2026-01-29T18:33:51.306285"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes \ud83d\ude42 I remember your name. Your name is **Nitu**.",
+        "timestamp": "2026-01-29T18:34:09.321812"
+      },
+      {
+        "role": "assistant",
+        "content": "Nice to meet you, Having \ud83d\ude42",
+        "timestamp": "2026-01-29T18:35:13.387801"
+      },
+      {
+        "role": "user",
+        "content": "What is your refund policy?\n",
+        "timestamp": "2026-01-29T18:35:36.994601"
+      },
+      {
+        "role": "assistant",
+        "content": "ASSISTANT: Hi Having, I'd be happy to explain our refund policy for you. According to our knowledge base, refunds will be paid to you or the person or organisation who paid the course fees in Australian Dollars. This means that if you're not satisfied with your purchase, we'll provide a full or partial refund.\n\nHowever, please note that this policy does not remove your right to take further action under Australian Consumer Law. If you have any concerns or issues, it's always best to reach out to us directly for assistance.",
+        "timestamp": "2026-01-29T18:36:03.503712"
+      },
+      {
+        "role": "user",
+        "content": "Which page mentions refund eligibility?\n",
+        "timestamp": "2026-01-29T18:36:42.719392"
+      },
+      {
+        "role": "assistant",
+        "content": "ASSISTANT: Hi Having, I'd like to clarify that our knowledge base does not mention a specific page that explicitly states \"refund eligibility\". However, it does provide information on how refunds are processed and what is required for a refund application.\n\nAccording to the knowledge base, if you have any concerns or issues with your purchase, please reach out to us directly. This means that you will be able to take further action under Australian Consumer Law, which may include requesting a refund.\n\nAdditionally, it's worth noting that our student management system records all financial transactions, so each student's financial status is known. If you have any questions or concerns about your account, please don't hesitate to contact us.\n\nIf you're looking for more information on refunds, I can suggest checking the knowledge base again or contacting our support team directly. They will be able to provide you with more detailed information and guidance.",
+        "timestamp": "2026-01-29T18:37:11.910005"
+      },
+      {
+        "role": "user",
+        "content": "I want a refund\n",
+        "timestamp": "2026-01-29T18:37:36.221703"
+      }
+    ],
+    "created_at": "2026-01-29T18:37:39.049976",
+    "updated_at": "2026-01-29T18:37:39.049986"
+  }
+]

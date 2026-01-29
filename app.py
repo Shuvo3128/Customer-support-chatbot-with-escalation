@@ -4,11 +4,12 @@ Customer Support AI Assistant - Streamlit App
 
 Features:
 - AI-powered customer support
-- Conversation memory
+- Long-term user memory
 - Intent detection
 - Auto escalation
 - Ticketing with priority
-- RAG with Source Documents (Teacher Killer 🔥)
+- RAG with Source Documents
+- 🧑‍💼 Admin Dashboard (2-way Human Chat)
 """
 
 import streamlit as st
@@ -41,14 +42,16 @@ st.set_page_config(
 # --------------------------------------------------
 
 def init_session_state():
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = generate_session_id()
+
     if "agent" not in st.session_state:
-        st.session_state.agent = CustomerSupportAgent()
+        st.session_state.agent = CustomerSupportAgent(
+            user_id=st.session_state.session_id
+        )
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
-
-    if "session_id" not in st.session_state:
-        st.session_state.session_id = generate_session_id()
 
     if "escalated" not in st.session_state:
         st.session_state.escalated = False
@@ -58,10 +61,47 @@ def init_session_state():
 # UI HELPERS
 # --------------------------------------------------
 
+def sync_admin_replies():
+    """
+    STEP 2.4 + 2.5
+    Pull admin replies from AdminStore and sync to user chat
+    (works across refresh)
+    """
+    agent = st.session_state.agent
+    admin_store = agent.admin_store
+
+    escalations = admin_store.list_escalations()
+
+    for esc in escalations:
+        if esc["user_id"] != st.session_state.session_id:
+            continue
+
+        for msg in esc["conversation"]:
+            if msg["role"] == "admin":
+                already_added = any(
+                    m["role"] == "admin"
+                    and m["content"] == msg["content"]
+                    for m in st.session_state.messages
+                )
+                if not already_added:
+                    st.session_state.messages.append(
+                        {
+                            "role": "admin",
+                            "content": msg["content"],
+                        }
+                    )
+
+
 def display_chat_history():
     for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+        role = msg["role"]
+
+        if role == "admin":
+            with st.chat_message("assistant"):
+                st.markdown(f"🧑‍💼 **Support Agent:** {msg['content']}")
+        else:
+            with st.chat_message(role):
+                st.markdown(msg["content"])
 
 
 # --------------------------------------------------
@@ -71,9 +111,13 @@ def display_chat_history():
 def main():
     init_session_state()
 
-    # Header
+    # 🔄 STEP 2.4 + 2.5: Sync admin replies every run
+    sync_admin_replies()
+
     st.title("🤖 Customer Support AI Assistant")
-    st.caption("AI support with memory, intent detection & automatic escalation")
+    st.caption(
+        "AI support with long-term memory, escalation & human-in-the-loop dashboard"
+    )
 
     # ==================================================
     # SIDEBAR
@@ -99,28 +143,15 @@ def main():
         st.divider()
 
         # =========================
-        # 🧠 AI CAPABILITIES PANEL
+        # ADMIN MODE
         # =========================
-        st.subheader("🧠 AI Capabilities")
-
-        capabilities = [
-            "📚 Knowledge Base (PDF Search)",
-            "🧠 Conversation Memory",
-            "🎯 Intent Detection",
-            "🔁 Repeated Complaint Detection",
-            "🤖 Auto Escalation (AI Failure)",
-            "🚨 Human Escalation System",
-            "🎫 Ticket Creation with Priority",
-            "📄 RAG Source Transparency (PDF + Page)",
-        ]
-
-        for cap in capabilities:
-            st.success(cap)
+        st.subheader("🧑‍💼 Admin Mode")
+        admin_mode = st.checkbox("Enable Admin Dashboard")
 
         st.divider()
 
         # =========================
-        # KNOWLEDGE BASE LOADER (FIXED 🔥)
+        # KNOWLEDGE BASE LOADER
         # =========================
         st.subheader("📄 Knowledge Base")
 
@@ -129,20 +160,90 @@ def main():
 
             processor = DocumentProcessor()
             chunks = processor.process_folder(config.PDF_DIR)
-
-            # 🔥 IMPORTANT FIX: use agent's vector store
             st.session_state.agent.vector_store_manager.create_store(chunks)
 
             st.success("Knowledge base loaded successfully!")
 
     # ==================================================
-    # CHAT UI
+    # ADMIN DASHBOARD UI
     # ==================================================
+    if admin_mode:
+        st.header("🚨 Admin Dashboard – Escalated Tickets")
 
+        admin_store = st.session_state.agent.admin_store
+        escalations = admin_store.list_escalations()
+
+        if not escalations:
+            st.info("No escalated tickets yet.")
+        else:
+            for esc in escalations:
+                with st.expander(
+                    f"🎫 {esc['ticket_id']} | {esc['priority']} | {esc['status']}"
+                ):
+                    st.markdown(f"**User ID:** `{esc['user_id']}`")
+                    st.markdown(f"**Reason:** {esc['reason']}")
+                    st.markdown(f"**Created:** {esc['created_at']}")
+
+                    # --------------------------
+                    # STATUS UPDATE
+                    # --------------------------
+                    new_status = st.selectbox(
+                        "Update Ticket Status",
+                        ["OPEN", "IN_PROGRESS", "RESOLVED"],
+                        index=["OPEN", "IN_PROGRESS", "RESOLVED"].index(
+                            esc["status"]
+                        ),
+                        key=f"status_{esc['ticket_id']}",
+                    )
+
+                    if st.button(
+                        "💾 Save Status",
+                        key=f"save_{esc['ticket_id']}",
+                    ):
+                        admin_store.update_status(
+                            esc["ticket_id"], new_status
+                        )
+                        st.success("Status updated")
+                        st.rerun()
+
+                    # --------------------------
+                    # CONVERSATION VIEW
+                    # --------------------------
+                    st.markdown("### 🗨️ Conversation History")
+                    for msg in esc["conversation"]:
+                        st.markdown(
+                            f"**{msg['role'].upper()}:** {msg['content']}"
+                        )
+
+                    # --------------------------
+                    # ADMIN REPLY
+                    # --------------------------
+                    st.markdown("### ✍️ Admin Reply")
+
+                    admin_reply = st.text_area(
+                        "Write reply to user",
+                        key=f"reply_{esc['ticket_id']}",
+                    )
+
+                    if st.button(
+                        "📨 Send Reply",
+                        key=f"send_{esc['ticket_id']}",
+                    ):
+                        admin_store.add_admin_reply(
+                            esc["ticket_id"], admin_reply
+                        )
+
+                        st.success("Reply sent to user")
+                        st.rerun()
+
+        st.divider()
+
+    # ==================================================
+    # CHAT UI (USER SIDE)
+    # ==================================================
     display_chat_history()
 
     if prompt := st.chat_input("Type your message here..."):
-        # Save user message
         st.session_state.messages.append(
             {"role": "user", "content": prompt}
         )
@@ -164,11 +265,7 @@ def main():
                 if result.get("escalated"):
                     st.session_state.escalated = True
 
-                # ==================================================
-                # 🔥 SHOW RAG SOURCE DOCUMENTS
-                # ==================================================
                 documents = result.get("source_documents", [])
-
                 if documents:
                     with st.expander("📚 Source Documents"):
                         for doc in documents:

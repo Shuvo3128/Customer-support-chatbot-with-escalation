@@ -1,6 +1,7 @@
 """
 Vector Store Manager
 Handles knowledge base storage and semantic search (Windows-safe)
++ Long-Term User Memory Store
 """
 
 import os
@@ -18,6 +19,10 @@ import config
 
 logger = logging.getLogger(__name__)
 
+
+# ==================================================
+# MAIN VECTOR STORE (KNOWLEDGE BASE - RAG)
+# ==================================================
 
 class VectorStoreManager:
     def __init__(
@@ -65,10 +70,6 @@ class VectorStoreManager:
     def create_store(self, documents: List[Document]) -> None:
         """
         Create vector store from documents.
-
-        Notes:
-        - Safe for Windows
-        - Does not delete files at runtime
         """
 
         if not documents:
@@ -114,7 +115,7 @@ class VectorStoreManager:
     def clear_store(self) -> None:
         """
         Clears in-memory reference only.
-        Does NOT delete files (prevents PermissionError on Windows)
+        Does NOT delete files (Windows-safe)
         """
         self._vector_store = None
         logger.info("Vector store reference cleared")
@@ -126,9 +127,6 @@ class VectorStoreManager:
     def similarity_search(self, query: str, k: int = 4) -> List[Document]:
         """
         Perform semantic similarity search.
-
-        Returns:
-            List[Document] — used by RAG pipeline
         """
 
         if self._vector_store is None:
@@ -139,3 +137,48 @@ class VectorStoreManager:
             return []
 
         return self._vector_store.similarity_search(query, k=k)
+
+
+# ==================================================
+# 🔐 LONG-TERM USER MEMORY STORE (NEW 🔥)
+# ==================================================
+
+class UserMemoryStore:
+    """
+    Persistent Long-Term Memory per user using Vector DB
+    """
+
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+        self.collection_name = f"user_memory_{user_id}"
+
+        # Ensure directory exists
+        os.makedirs(config.CHROMA_PERSIST_DIR, exist_ok=True)
+
+        self.embeddings = OllamaEmbeddings(
+            model=config.OLLAMA_EMBEDDING_MODEL,
+            base_url=config.OLLAMA_BASE_URL,
+        )
+
+        self.store = Chroma(
+            collection_name=self.collection_name,
+            embedding_function=self.embeddings,
+            persist_directory=config.CHROMA_PERSIST_DIR,
+        )
+
+        logger.info(f"UserMemoryStore initialized for user: {user_id}")
+
+    def add_memory(self, text: str, metadata: dict):
+        """
+        Store a memory entry for the user
+        """
+        self.store.add_texts(
+            texts=[text],
+            metadatas=[metadata],
+        )
+
+    def get_relevant_memory(self, query: str, k: int = 3) -> List[Document]:
+        """
+        Retrieve relevant past memories for the user
+        """
+        return self.store.similarity_search(query, k=k)
